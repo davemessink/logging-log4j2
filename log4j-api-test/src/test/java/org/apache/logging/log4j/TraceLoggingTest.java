@@ -20,8 +20,10 @@ import org.apache.logging.log4j.message.DefaultFlowMessageFactory;
 import org.apache.logging.log4j.message.EntryMessage;
 import org.apache.logging.log4j.message.FlowMessageFactory;
 import org.apache.logging.log4j.message.Message;
+import org.apache.logging.log4j.message.MessageFactory;
 import org.apache.logging.log4j.message.ObjectMessage;
 import org.apache.logging.log4j.message.ParameterizedMessage;
+import org.apache.logging.log4j.message.ReusableMessageFactory;
 import org.apache.logging.log4j.message.ReusableParameterizedMessage;
 import org.apache.logging.log4j.message.ReusableParameterizedMessageTest;
 import org.apache.logging.log4j.message.SimpleMessage;
@@ -29,6 +31,7 @@ import org.apache.logging.log4j.spi.AbstractLogger;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -305,5 +308,30 @@ public class TraceLoggingTest extends AbstractLogger {
 
         // ensure original entry message not overwritten
         assertEquals("Tracy Logan", entry.getMessage().getFormattedMessage());
+    }
+
+    // Ensure that ReusableParameterizedMessages are getting released correctly
+    @Test
+    public void testReusableMessageHandling() {
+        assertSame(AbstractLogger.DEFAULT_MESSAGE_FACTORY_CLASS, ReusableMessageFactory.class,
+                "The default message factory has changed");
+
+        final MessageFactory factory = new ReusableMessageFactory();
+        final Message reusedMessage = factory.newMessage("test {}", 0);
+        ReusableMessageFactory.release(reusedMessage);
+
+        traceEntry("Entry test {}", 0);
+        assertReusedMessage(reusedMessage, factory);
+
+        traceExit("Exit test {}", 0);
+        assertReusedMessage(reusedMessage, factory);
+    }
+
+    private void assertReusedMessage(Message reusableMessage, MessageFactory factory) {
+        final Message testMessage = factory.newMessage("test {}", 0);
+
+        assertSame(reusableMessage, testMessage);
+
+        ReusableMessageFactory.release(testMessage);
     }
 }

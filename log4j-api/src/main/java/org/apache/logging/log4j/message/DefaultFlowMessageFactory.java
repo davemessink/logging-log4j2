@@ -224,7 +224,9 @@ public class DefaultFlowMessageFactory implements FlowMessageFactory, Serializab
 
     private Message makeImmutable(final Message message) {
         if (message instanceof ReusableMessage) {
-            return ((ReusableMessage) message).memento();
+            final Message memento = ((ReusableMessage) message).memento();
+            ReusableMessageFactory.release(message);
+            return memento;
         }
         return message;
     }
@@ -243,7 +245,7 @@ public class DefaultFlowMessageFactory implements FlowMessageFactory, Serializab
 
     @Override
     public ExitMessage newExitMessage(Message message) {
-        return new SimpleExitMessage(exitText, message);
+        return new SimpleExitMessage(exitText, makeImmutable(message));
     }
 
     /*
